@@ -53,7 +53,7 @@ It enables citizens and field staff to report incidents, and helps municipalitie
 
 ### **1. Clone the Repository**
 
-git clone https://github.com/yourusername/StraySafe.git
+git clone https://github.com/umitkhanna/StraySafe.git
 cd StraySafe
 
 ### **2. Copy .env.example to .env and update the following**
