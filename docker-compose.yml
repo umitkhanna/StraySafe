@@ -1,0 +1,127 @@
+version: "3.9"
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: infra/nginx/Dockerfile
+    depends_on:
+      - web
+      - api
+      - ml
+      - minio
+    ports:
+      - "80:80"
+    environment:
+      - DOMAIN=${DOMAIN}
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api
+        VITE_ML_BASE: /ml
+    environment:
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile  # use specific Dockerfile
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${API_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_USE_SSL=${S3_USE_SSL}
+      - CORS_ORIGIN=${PUBLIC_BASE_URL}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+    depends_on:
+      - mongo
+      - redis
+      - minio
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  ml:
+    build:
+      context: .
+      dockerfile: docker/ml.Dockerfile
+    environment:
+      - ML_PORT=${ML_PORT}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_USE_SSL=${S3_USE_SSL}
+    depends_on:
+      - minio
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--save","","--appendonly","no"]
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+  minio:
+    # Use a valid tag; 'latest' is fine for dev
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - straysafe
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    environment:
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    networks:
+      - straysafe
+    restart: unless-stopped
+
+networks:
+  straysafe:
+    name: straysafe
+
+volumes:
+  mongo_data:
+  minio_data:

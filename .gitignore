@@ -1,0 +1,85 @@
+# -------------------------
+# Node.js / React / Web App
+# -------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+.pnpm-debug.log
+
+# Local env files
+.env
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.cache/
+.next/
+out/
+
+# React Native / Mobile
+.expo/
+.expo-shared/
+android/
+ios/
+*.apk
+*.aab
+
+# -------------------------
+# Python / ML service
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv
+venv/
+ENV/
+env/
+env.bak/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# -------------------------
+# Docker
+# -------------------------
+# Persistent data volumes
+mongo_data/
+minio_data/
+redis_data/
+grafana_data/
+
+# Docker Compose override files
+docker-compose.override.yml
+
+# -------------------------
+# Logs
+# -------------------------
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -------------------------
+# OS / Editor
+# -------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.iml
