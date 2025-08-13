@@ -58,22 +58,33 @@ cd StraySafe
 
 ### **2. Copy .env.example to .env and update the following**
 DOMAIN=localhost
+
 NODE_ENV=development
+
 API_PORT=3000
+
 ML_PORT=8000
+
 JWT_SECRET=your_secret_key
 
 MONGO_URI=mongodb://mongo:27017/straysafe
+
 REDIS_URL=redis://redis:6379
 
 S3_ENDPOINT=http://minio:9000
+
 S3_BUCKET=straysafe-media
+
 S3_ACCESS_KEY=minioadmin
+
 S3_SECRET_KEY=minioadmin
+
 S3_USE_SSL=false
 
 PUBLIC_BASE_URL=http://localhost
+
 MINIO_ROOT_USER=minioadmin
+
 MINIO_ROOT_PASSWORD=minioadmin
 
 ### **3. Run the following command in terminal**
