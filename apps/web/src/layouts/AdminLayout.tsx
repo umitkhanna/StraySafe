@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom"
-import { ReactNode } from "react"
+import type { ReactNode } from "react";
+
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (

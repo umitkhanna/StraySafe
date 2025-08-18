@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Login from "@/pages/Login"
+import Dashboard from "@/pages/Dashboard"
 import UsersPage from "@/pages/admin/Users"
 import "./App.css";
 
@@ -20,6 +21,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
 
         {/* Admin */}
         <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
