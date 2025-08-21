@@ -5,7 +5,9 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/auth.js";
-import userRoutes from "./routes/users.js";
+import userRoutes from "./routes/userRoutes.js";
+import municipalityRoutes from "./routes/municipalityRoutes.js";
+import ngoRoutes from "./routes/ngoRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -48,6 +50,8 @@ app.use(cors({
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/municipalities", municipalityRoutes);
+app.use("/api/ngos", ngoRoutes);
 
 
 // Health check endpoint

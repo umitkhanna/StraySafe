@@ -19,16 +19,10 @@ const Navbar: FC = () => {
   }, []);
 
   return (
-    <div className="bg-white shadow px-6 py-4 flex justify-between items-center">
-      {/* Left Search */}
-      <input
-        type="text"
-        placeholder="Search..."
-        className="border rounded px-3 py-2 w-1/3"
-      />
-
-      {/* Right User Menu */}
-      <div className="relative" ref={dropdownRef}>
+    <div className="bg-white shadow px-6 py-4 flex items-end">
+      <div className="flex-1">
+      </div>
+      <div className="" ref={dropdownRef}>
         <button
           onClick={() => setDropdownOpen((prev) => !prev)}
           className="flex items-center gap-2 focus:outline-none"

@@ -20,7 +20,7 @@ const handleError = (error, res) => {
       details: messages
     });
   }
-
+console.log('Auth Error:', error);
   return res.status(500).json({
     success: false,
     message: 'Something went wrong'

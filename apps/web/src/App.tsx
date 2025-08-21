@@ -4,6 +4,8 @@ import { queryClient } from "@/lib/queryClient"
 import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import UsersPage from "@/pages/admin/Users"
+import NGOsPage from "@/pages/admin/NGOs"
+import MunicipalitiesPage from "@/pages/admin/Municipalities"
 import "./App.css";
 
 function NotFound() {
@@ -29,6 +31,8 @@ export default function App() {
           {/* Admin */}
           <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="/admin/users" element={<UsersPage />} />
+          <Route path="/admin/ngos" element={<NGOsPage />} />
+          <Route path="/admin/municipalities" element={<MunicipalitiesPage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
