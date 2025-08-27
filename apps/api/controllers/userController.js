@@ -1,6 +1,13 @@
 import User from '../models/User.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import AppError from '../utils/AppError.js';
+import { 
+  canUserManage, 
+  isOrganizationAdmin, 
+  isManager, 
+  validateParentChild,
+  canCreateChildWithRole 
+} from '../utils/userPermissions.js';
 
 // Get all users with pagination and search
 export const getAllUsers = catchAsync(async (req, res, next) => {
@@ -65,13 +72,13 @@ export const createUser = catchAsync(async (req, res, next) => {
   const { name, email, password, role, parent_id, municipality, ngo, address, phone, emergencyContact, medicalInfo, riskLevel } = req.body;
 
   // Check if the current user can create users
-  if (req.user.role !== 'admin' && !req.user.isOrganizationAdmin() && !req.user.isManager()) {
+  if (req.user.role !== 'admin' && !isOrganizationAdmin(req.user) && !isManager(req.user)) {
     return next(new AppError('You do not have permission to create users', 403));
   }
 
   // Validate parent-child relationship if parent_id is provided
   if (parent_id) {
-    const isValidRelationship = await User.validateParentChild(parent_id, null, role);
+    const isValidRelationship = await validateParentChild(parent_id, null, role);
     if (!isValidRelationship) {
       return next(new AppError('Invalid parent-child relationship for the specified roles', 400));
     }
@@ -79,7 +86,7 @@ export const createUser = catchAsync(async (req, res, next) => {
     // Check if current user can create child with this parent
     if (req.user.role !== 'admin' && parent_id !== req.user._id.toString()) {
       const parent = await User.findById(parent_id);
-      if (!parent || !req.user.canManage(parent_id)) {
+      if (!parent || !(await canUserManage(req.user, parent_id))) {
         return next(new AppError('You cannot create users under the specified parent', 403));
       }
     }
@@ -87,7 +94,7 @@ export const createUser = catchAsync(async (req, res, next) => {
 
   // For non-admin users, set appropriate parent
   if (req.user.role !== 'admin' && !parent_id) {
-    if (req.user.canCreateChildWithRole(role)) {
+    if (canCreateChildWithRole(req.user.role, role)) {
       req.body.parent_id = req.user._id;
     } else {
       return next(new AppError('You cannot create users with this role', 403));
