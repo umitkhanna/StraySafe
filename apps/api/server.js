@@ -1,116 +1,47 @@
-import express from "express";
-import cors from "cors";
-import pino from "pino-http";
-import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
-import connectDB from "./config/database.js";
-import authRoutes from "./routes/auth.js";
-import userRoutes from "./routes/userRoutes.js";
-import municipalityRoutes from "./routes/municipalityRoutes.js";
-import ngoRoutes from "./routes/ngoRoutes.js";
-
-// Load environment variables
+const dotenv = require("dotenv");
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+const express = require("express");
+const mongoose = require("mongoose");
+const morgan = require("morgan");
+const cors = require("cors");
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
 
 const app = express();
-
-// Middleware
-app.use(pino());
-app.use(express.json({ limit: "5mb" }));
-app.use(cookieParser());
-
-// CORS configuration for both web and React Native
-app.use(cors({ 
-  origin: function (origin, callback) {
-    // Allowing requests with no origin for mobile app
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || ['*'];
-    
-    // Allow all origins in development
-    if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
-    
-    // Check if origin is allowed
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    callback(new Error('Not allowed by CORS'));
+app.use(cors({
+  origin: function(origin, cb) {
+    // allow requests with no origin (e.g., curl, mobile apps)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
   },
-  credentials: true, // Allow credentials (cookies) to be sent
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false, // set true only if you use cookies
 }));
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/municipalities", municipalityRoutes);
-app.use("/api/ngos", ngoRoutes);
+
+const usersRouter = require("./routes/users");
+const authRouter = require("./routes/auth");
 
 
-// Health check endpoint
-app.get("/health", (_req, res) => {
-  res.json({ 
-    ok: true,
-    message: "StraySafe API is running",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+app.use(express.json());
+app.use(morgan("dev"));
 
+app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter); // you can protect these later with auth middleware
 
-// Test endpoint to verify MongoDB connection
-app.get("/db-status", async (_req, res) => {
-  try {
-    const mongoose = await import('mongoose');
-    const state = mongoose.connection.readyState;
-    const states = {
-      0: 'disconnected',
-      1: 'connected',
-      2: 'connecting',
-      3: 'disconnecting'
-    };
-    
-    res.json({
-      database: states[state] || 'unknown',
-      host: mongoose.connection.host || 'N/A'
-    });
-  } catch (error) {
-    res.status(500).json({
-      database: 'error',
-      message: error.message
-    });
-  }
-});
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/mern_hierarchy";
+const PORT = process.env.PORT || 3000;
 
-// Global error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err);
-  
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Something went wrong!',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-/*
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
-});
-*/
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`CORS Origin: ${process.env.CORS_ORIGIN || '*'}`);
-});
+mongoose
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log("MongoDB connected");
+    app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+  })
+  .catch((err) => console.error(err));

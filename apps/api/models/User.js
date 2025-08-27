@@ -1,126 +1,79 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters long'],
-    select: false
-  },
-  role: {
-    type: String,
-    enum: [
-      'admin',
-      'ngo_user',
-      'ngo_manager',
-      'municipality_user',
-      'municipality_manager',
-      'citizen'
-    ],
-    default: 'citizen'
-  },
-  organization_type: {
-    type: String,
-    enum: ['ngo', 'municipality', null],
-    default: null
-  },
-  organization_name: {
-    type: String,
-    trim: true
-  },
-  municipality: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Municipality'
-  },
-  ngo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'NGO'
-  },
-  parent_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  phone: {
-    type: String,
-    trim: true
-  },
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    country: String,
-    postalCode: String
-  },
-  emergencyContact: {
-    name: String,
-    phone: String,
-    relationship: String
-  },
-  medicalInfo: {
-    conditions: [String],
-    medications: [String],
-    allergies: [String],
-    notes: String
-  },
-  riskLevel: {
-    type: String,
-    enum: ['low', 'medium', 'high'],
-    default: 'low'
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: Date,
-  passwordChangedAt: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date
-}, {
-  timestamps: true
-});
+const ROLES = [
+  "admin",
+  "ngoAdmin",
+  "municipalityAdmin",
+  "operators",
+  "groundStaff",
+  "user",
+  "highRiskUser",
+];
 
-// Pre-save middleware for password hashing
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
+const UserSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true, required: true, maxlength: 120 },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    passwordHash: { type: String, required: true, select: false },
+    role: {
+      type: String,
+      enum: ROLES,
+      default: "user",
+      index: true,
+    },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    isActive: { type: Boolean, default: true, index: true },
+    // Optional fields
+    ngoName: { type: String, trim: true },
+    municipalityName: { type: String, trim: true },
+    address: { type: String, trim: true },
+    address2: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    phoneNumber: { type: String, trim: true },
+  },
+  { timestamps: true }
+);
 
-userSchema.pre('save', function(next) {
-  if (!this.isModified('password') || this.isNew) return next();
-  this.passwordChangedAt = Date.now() - 1000;
-  next();
-});
-
-// Essential authentication method
-userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+// Hide sensitive fields in JSON
+UserSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.passwordHash;
+  return obj;
 };
 
-userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
-  if (this.passwordChangedAt) {
-    const changedTimestamp = parseInt(
-      this.passwordChangedAt.getTime() / 1000,
-      10
-    );
-    return JWTTimestamp < changedTimestamp;
+// Static helper to hash passwords
+UserSchema.statics.hashPassword = async function (plain) {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(plain, salt);
+};
+
+// Instance method to compare passwords
+UserSchema.methods.comparePassword = function (plain) {
+  return bcrypt.compare(plain, this.passwordHash);
+};
+
+// Prevent self-reference
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("parentId") || !this.parentId) return next();
+
+  if (this._id && this._id.equals(this.parentId)) {
+    return next(new Error("parentId cannot be the user itself."));
   }
-  return false;
-};
 
-const User = mongoose.model('User', userSchema);
+  const parent = await mongoose.model("User").findById(this.parentId).select("_id");
+  if (!parent) return next(new Error("parentId does not exist."));
 
-export default User;
+  next();
+});
+
+module.exports = mongoose.model("User", UserSchema);
