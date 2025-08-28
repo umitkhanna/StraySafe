@@ -7,6 +7,7 @@ export default function Layout({ children, title, subtitle, action }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Menu items configuration
   const menuItems = [
@@ -25,7 +26,7 @@ export default function Layout({ children, title, subtitle, action }) {
       path: "/admin/users",
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       )
     },
@@ -78,13 +79,110 @@ export default function Layout({ children, title, subtitle, action }) {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-red-50 flex">
-      {/* Sidebar */}
-      <div className={`bg-gradient-to-b from-slate-900 to-slate-800 shadow-lg transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'} flex flex-col`}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-red-50 flex flex-col lg:flex-row">
+      {/* Mobile Header with Menu Button */}
+      <div className="lg:hidden bg-white shadow-sm border-b border-orange-200 px-4 py-3 flex items-center justify-between">
+        <DoublePawLogo 
+          size="sm" 
+          showText={true}
+          textClassName="text-slate-900"
+        />
+        <button
+          onClick={toggleMobileMenu}
+          className="p-2 rounded-lg text-slate-600 hover:bg-orange-50 transition-colors duration-200"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={toggleMobileMenu}>
+          <div className="bg-gradient-to-b from-slate-900 to-slate-800 w-64 h-full shadow-lg" onClick={(e) => e.stopPropagation()}>
+            {/* Mobile Menu Header */}
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <DoublePawLogo 
+                size="md" 
+                showText={true}
+                textClassName="text-white"
+              />
+              <button
+                onClick={toggleMobileMenu}
+                className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Mobile Navigation Menu */}
+            <nav className="flex-1 p-4">
+              <ul className="space-y-2">
+                {menuItems.map((item, index) => (
+                  <li key={index}>
+                    <Link
+                      to={item.path}
+                      onClick={toggleMobileMenu}
+                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                        isActiveRoute(item.path)
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-r-2 border-orange-300'
+                          : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      <span className={`${isActiveRoute(item.path) ? 'text-white' : 'text-slate-400'}`}>
+                        {item.icon}
+                      </span>
+                      <span className="font-medium">{item.title}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            {/* Mobile User Profile */}
+            <div className="p-4 border-t border-slate-700">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">{user?.name || "User"}</p>
+                  <p className="text-xs text-slate-400">{user?.role}</p>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="text-sm font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className={`hidden lg:flex bg-gradient-to-b from-slate-900 to-slate-800 shadow-lg transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'} flex-col`}>
         {/* Logo Section */}
         <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!sidebarCollapsed && (
               <DoublePawLogo 
                 size="md" 
@@ -92,20 +190,27 @@ export default function Layout({ children, title, subtitle, action }) {
                 textClassName="text-white"
               />
             )}
-            {sidebarCollapsed && (
-              <DoublePawLogo 
-                size="sm" 
-                showText={false}
-              />
+            {!sidebarCollapsed && (
+              <button
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             )}
-            <button
-              onClick={toggleSidebar}
-              className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors duration-200"
-            >
-              <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            {sidebarCollapsed && (
+              <button
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors duration-200"
+                title="Expand sidebar"
+              >
+                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -116,14 +221,14 @@ export default function Layout({ children, title, subtitle, action }) {
               <li key={index}>
                 <Link
                   to={item.path}
-                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'} px-3 py-2.5 rounded-lg transition-all duration-200 ${
                     isActiveRoute(item.path)
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-r-2 border-orange-300'
+                      ? `bg-gradient-to-r from-orange-500 to-red-500 text-white ${sidebarCollapsed ? '' : 'border-r-2 border-orange-300'}`
                       : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                   }`}
                   title={sidebarCollapsed ? item.title : ''}
                 >
-                  <span className={`${isActiveRoute(item.path) ? 'text-white' : 'text-slate-400'}`}>
+                  <span className={`${isActiveRoute(item.path) ? 'text-white' : 'text-slate-400'} ${sidebarCollapsed ? '' : ''}`}>
                     {item.icon}
                   </span>
                   {!sidebarCollapsed && <span className="font-medium">{item.title}</span>}
@@ -174,28 +279,34 @@ export default function Layout({ children, title, subtitle, action }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-orange-200 px-6 py-4">
+        <header className="bg-white shadow-sm border-b border-orange-200 px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">{title}</h1>
-              {subtitle && <p className="text-sm text-slate-600 mt-1">{subtitle}</p>}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent truncate">{title}</h1>
+              {subtitle && <p className="text-sm text-slate-600 mt-1 truncate">{subtitle}</p>}
             </div>
-            <div className="flex items-center space-x-4">
-              {action && <div>{action}</div>}
-              <span className="text-sm text-slate-600">{user?.email}</span>
-              <div className="w-8 h-8 bg-gradient-to-r from-orange-100 to-red-100 rounded-full flex items-center justify-center border border-orange-200">
+            <div className="flex items-center space-x-2 sm:space-x-4 ml-4">
+              {action && <div className="hidden sm:block">{action}</div>}
+              <span className="text-sm text-slate-600 hidden md:block truncate">{user?.email}</span>
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-100 to-red-100 rounded-full flex items-center justify-center border border-orange-200 flex-shrink-0">
                 <span className="text-sm font-medium bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                   {user?.name?.charAt(0)?.toUpperCase() || "U"}
                 </span>
               </div>
             </div>
           </div>
+          {/* Mobile Action Button */}
+          {action && (
+            <div className="sm:hidden mt-3">
+              {action}
+            </div>
+          )}
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">
           {children}
         </main>
       </div>

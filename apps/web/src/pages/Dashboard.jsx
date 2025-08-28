@@ -15,15 +15,15 @@ export default function Dashboard() {
       subtitle={`Welcome back, ${user?.name || "User"}!`}
     >
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-orange-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-orange-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-600">Total Users</p>
-              <p className="text-2xl font-bold text-slate-900">1,234</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900">1,234</p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 bg-gradient-to-r from-orange-600 to-red-600" fill="none" stroke="url(#userGradient)" viewBox="0 0 24 24">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-r from-orange-600 to-red-600" fill="none" stroke="url(#userGradient)" viewBox="0 0 24 24">
                 <defs>
                   <linearGradient id="userGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#EA580C" />

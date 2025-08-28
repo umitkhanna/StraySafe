@@ -1,5 +1,5 @@
 // Custom Dog Paw Print SVG Component with Gradient
-function PawPrint({ className = "" }) {
+function PawPrint({ className = "", gradientId }) {
   return (
     <svg 
       className={className}
@@ -8,26 +8,26 @@ function PawPrint({ className = "" }) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="pawGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`pawGradient1-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor:"#FFD700", stopOpacity:1}} />
           <stop offset="30%" style={{stopColor:"#FFA500", stopOpacity:1}} />
           <stop offset="70%" style={{stopColor:"#FF6347", stopOpacity:1}} />
           <stop offset="100%" style={{stopColor:"#DC143C", stopOpacity:1}} />
         </linearGradient>
-        <linearGradient id="pawGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`pawGradient2-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor:"#FFD700", stopOpacity:1}} />
           <stop offset="50%" style={{stopColor:"#FF6347", stopOpacity:1}} />
           <stop offset="100%" style={{stopColor:"#8B008B", stopOpacity:1}} />
         </linearGradient>
-        <linearGradient id="pawGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`pawGradient3-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor:"#FFA500", stopOpacity:1}} />
           <stop offset="100%" style={{stopColor:"#FF1493", stopOpacity:1}} />
         </linearGradient>
-        <linearGradient id="pawGradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`pawGradient4-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor:"#FFD700", stopOpacity:1}} />
           <stop offset="100%" style={{stopColor:"#FF6347", stopOpacity:1}} />
         </linearGradient>
-        <linearGradient id="pawGradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={`pawGradientMain-${gradientId}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor:"#FF6347", stopOpacity:1}} />
           <stop offset="50%" style={{stopColor:"#DC143C", stopOpacity:1}} />
           <stop offset="100%" style={{stopColor:"#8B008B", stopOpacity:1}} />
@@ -35,12 +35,12 @@ function PawPrint({ className = "" }) {
       </defs>
       
       {/* Main pad */}
-      <ellipse cx="50" cy="75" rx="20" ry="15" fill="url(#pawGradientMain)" />
+      <ellipse cx="50" cy="75" rx="20" ry="15" fill={`url(#pawGradientMain-${gradientId})`} />
       
       {/* Toe pads */}
-      <ellipse cx="30" cy="45" rx="8" ry="12" fill="url(#pawGradient1)" />
-      <ellipse cx="50" cy="35" rx="8" ry="12" fill="url(#pawGradient2)" />
-      <ellipse cx="70" cy="45" rx="8" ry="12" fill="url(#pawGradient3)" />
+      <ellipse cx="30" cy="45" rx="8" ry="12" fill={`url(#pawGradient1-${gradientId})`} />
+      <ellipse cx="50" cy="35" rx="8" ry="12" fill={`url(#pawGradient2-${gradientId})`} />
+      <ellipse cx="70" cy="45" rx="8" ry="12" fill={`url(#pawGradient3-${gradientId})`} />
     </svg>
   );
 }
@@ -51,6 +51,8 @@ export default function DoublePawLogo({
   className = "",
   textClassName = ""
 }) {
+  // Generate unique ID for this instance to avoid gradient conflicts
+  const gradientId = Math.random().toString(36).substr(2, 9);
   const sizeClasses = {
     sm: {
       container: "h-6 w-6",
@@ -86,6 +88,7 @@ export default function DoublePawLogo({
       <div className={`relative flex items-center justify-center ${currentSize.container}`}>
         <PawPrint 
           className={`${currentSize.paw}`}
+          gradientId={gradientId}
         />
       </div>
       {showText && (
