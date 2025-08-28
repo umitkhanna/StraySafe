@@ -1,20 +1,21 @@
 import { useAuth } from "../auth/AuthContext";
+import Layout from "../layouts/Layout";
+import usePageTitle from "../hooks/usePageTitle";
 
 export default function Settings() {
   const { user } = useAuth();
+  
+  // Set page title
+  usePageTitle("Settings");
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your account and application preferences</p>
-        </div>
-
-        {/* Content */}
-        <div className="space-y-6">
-          {/* Profile Settings */}
+    <Layout 
+      title="Settings" 
+      subtitle="Manage your account and application preferences"
+    >
+      {/* Content */}
+      <div className="space-y-6 max-w-4xl">
+        {/* Profile Settings */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile Settings</h2>
             <div className="space-y-4">
@@ -130,7 +131,6 @@ export default function Settings() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </Layout>
   );
 }
