@@ -47,7 +47,21 @@ const validateRolePermissions = (req, res, next) => {
 // Get all users
 router.get("/", async (req, res) => {
   try {
-    const users = await User.find().select("-passwordHash").sort({ createdAt: -1 });
+    const { parentId } = req.query;
+    let filter = {};
+    
+    if (parentId) {
+      // If parentId is provided, only fetch child users
+      if (!mongoose.isValidObjectId(parentId)) {
+        return res.status(400).json({ error: "Invalid parentId" });
+      }
+      filter.parentId = parentId;
+    } else {
+      // If no parentId, fetch only top-level users (no parent)
+      filter.parentId = null;
+    }
+    
+    const users = await User.find(filter).select("-passwordHash").sort({ createdAt: -1 });
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message || "Server error" });

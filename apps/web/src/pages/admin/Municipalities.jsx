@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../../api";
 import Layout from "../../layouts/Layout";
 import usePageTitle from "../../hooks/usePageTitle";
@@ -16,10 +17,16 @@ const INDIAN_STATES = [
 ];
 
 export default function MunicipalitiesManagement() {
-  const { user } = useAuth();
+  const { user: currentUser, impersonate } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Set page title
   usePageTitle("Municipality Management");
+  
+  // Get parent ID from URL params
+  const parentId = searchParams.get('parentId');
+  const [parentUser, setParentUser] = useState(null);
   
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,23 +64,61 @@ export default function MunicipalitiesManagement() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    fetchParentUser();
+  }, [parentId]);
+
+  const fetchParentUser = async () => {
+    if (!parentId) {
+      setParentUser(null);
+      return;
+    }
+    
+    try {
+      const response = await api.get(`/users/${parentId}`);
+      setParentUser(response.data);
+    } catch (err) {
+      console.error("Failed to fetch parent user:", err);
+      setParentUser(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/users");
-      // Filter to show only Municipality-related users
-      const municipalityUsers = (response.data || []).filter(user => 
-        user.role === "municipalityAdmin" || user.role === "operators" || user.role === "groundStaff"
-      );
-      setUsers(municipalityUsers);
+      let url = "/users";
+      
+      if (parentId) {
+        // Fetch child users (operators and groundStaff) for the parent
+        url = `/users?parentId=${parentId}`;
+      } else {
+        // Fetch all users and filter for municipality admins only
+        const response = await api.get(url);
+        const municipalityUsers = (response.data || []).filter(user => 
+          user.role === "municipalityAdmin"
+        );
+        setUsers(municipalityUsers);
+        setError("");
+        setLoading(false);
+        return;
+      }
+      
+      const response = await api.get(url);
+      setUsers(response.data || []);
       setError("");
     } catch (err) {
       setError(err?.response?.data?.error || "Failed to fetch municipality users");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Navigation functions
+  const handleViewChildUsers = (userId) => {
+    navigate(`/admin/municipalities?parentId=${userId}`);
+  };
+
+  const handleBackToAllUsers = () => {
+    navigate('/admin/municipalities');
   };
 
   const handleDeleteUser = async (userId) => {
@@ -88,16 +133,36 @@ export default function MunicipalitiesManagement() {
     }
   };
 
+  const handleImpersonate = async (targetUser) => {
+    if (!window.confirm(`Are you sure you want to impersonate ${targetUser.name} (${targetUser.email})?`)) {
+      return;
+    }
+    
+    try {
+      const result = await impersonate(targetUser._id);
+      if (result.success) {
+        navigate('/');
+      } else {
+        setError(result.error || "Failed to impersonate user");
+      }
+    } catch (err) {
+      setError("Failed to impersonate user");
+    }
+  };
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post("/users", newUser);
+      // Add parent ID if we're creating child users
+      const userData = parentId ? { ...newUser, parentId } : newUser;
+      
+      const response = await api.post("/users", userData);
       setUsers([...users, response.data]);
       setShowAddModal(false);
       setNewUser({ 
         name: "", 
         email: "", 
-        role: "municipalityAdmin", 
+        role: parentId ? "operators" : "municipalityAdmin", 
         password: "",
         municipalityName: "",
         address: "",
@@ -142,18 +207,31 @@ export default function MunicipalitiesManagement() {
 
   return (
     <Layout 
-      title="Municipality Management" 
-      subtitle="Manage municipal organizations and users"
+      title={parentId ? `Child Users - ${parentUser?.name || 'Loading...'}` : "Municipality Management"} 
+      subtitle={parentId ? `Manage operators and ground staff for ${parentUser?.name || 'Loading...'}` : "Manage municipal organizations and users"}
       action={
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add Municipality User</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          {parentId && (
+            <button
+              onClick={handleBackToAllUsers}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Back to All Municipalities</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>{parentId ? 'Add Child User' : 'Add Municipality User'}</span>
+          </button>
+        </div>
       }
     >
       {error && (
@@ -226,8 +304,28 @@ export default function MunicipalitiesManagement() {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          {/* Make username/email clickable for municipality admin roles that can have child users */}
+                          {!parentId && user.role === 'municipalityAdmin' ? (
+                            <div>
+                              <button
+                                onClick={() => handleViewChildUsers(user._id)}
+                                className="text-sm font-medium text-green-600 hover:text-green-800 hover:underline transition-colors duration-200"
+                              >
+                                {user.name}
+                              </button>
+                              <button
+                                onClick={() => handleViewChildUsers(user._id)}
+                                className="block text-sm text-green-500 hover:text-green-700 hover:underline transition-colors duration-200"
+                              >
+                                {user.email}
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -268,6 +366,15 @@ export default function MunicipalitiesManagement() {
                       >
                         Edit
                       </button>
+                      {/* Only show impersonate button for admins and if not the same user */}
+                      {currentUser?.role?.toLowerCase() === 'admin' && currentUser?._id !== user._id && (
+                        <button
+                          onClick={() => handleImpersonate(user)}
+                          className="text-orange-600 hover:text-orange-900 transition-colors duration-200 mr-3"
+                        >
+                          Impersonate
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(user._id)}
                         className="text-red-600 hover:text-red-900"
@@ -343,92 +450,105 @@ export default function MunicipalitiesManagement() {
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
-                  <option value="municipalityAdmin">Municipality Admin</option>
-                  <option value="operators">Operators</option>
-                  <option value="groundStaff">Ground Staff</option>
+                  {parentId ? (
+                    <>
+                      <option value="operators">Operators</option>
+                      <option value="groundStaff">Ground Staff</option>
+                    </>
+                  ) : (
+                    <option value="municipalityAdmin">Municipality Admin</option>
+                  )}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Municipality Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newUser.municipalityName}
-                  onChange={(e) => setNewUser({ ...newUser, municipalityName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <input
-                  type="text"
-                  required
-                  value={newUser.address}
-                  onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address 2 (Optional)</label>
-                <input
-                  type="text"
-                  value={newUser.address2}
-                  onChange={(e) => setNewUser({ ...newUser, address2: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              {!parentId && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Municipality Name</label>
                   <input
                     type="text"
                     required
-                    value={newUser.city}
-                    onChange={(e) => setNewUser({ ...newUser, city: e.target.value })}
+                    value={newUser.municipalityName}
+                    onChange={(e) => setNewUser({ ...newUser, municipalityName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                  <select
-                    required
-                    value={newUser.state}
-                    onChange={(e) => setNewUser({ ...newUser, state: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  >
-                    <option value="">Select State</option>
-                    {INDIAN_STATES.map(state => (
-                      <option key={state} value={state}>{state}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    required
-                    pattern="[0-9]{6}"
-                    title="Pincode must be 6 digits"
-                    value={newUser.pincode}
-                    onChange={(e) => setNewUser({ ...newUser, pincode: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    required
-                    pattern="[0-9]{10}"
-                    title="Phone number must be 10 digits"
-                    value={newUser.phoneNumber}
-                    onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                </div>
-              </div>
+              )}
+              
+              {/* Address fields - only show for parent users (not child users) */}
+              {!parentId && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <input
+                      type="text"
+                      required
+                      value={newUser.address}
+                      onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address 2 (Optional)</label>
+                    <input
+                      type="text"
+                      value={newUser.address2}
+                      onChange={(e) => setNewUser({ ...newUser, address2: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUser.city}
+                        onChange={(e) => setNewUser({ ...newUser, city: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                      <select
+                        required
+                        value={newUser.state}
+                        onChange={(e) => setNewUser({ ...newUser, state: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="">Select State</option>
+                        {INDIAN_STATES.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                      <input
+                        type="text"
+                        required
+                        pattern="[0-9]{6}"
+                        title="Pincode must be 6 digits"
+                        value={newUser.pincode}
+                        onChange={(e) => setNewUser({ ...newUser, pincode: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                      <input
+                        type="tel"
+                        required
+                        pattern="[0-9]{10}"
+                        title="Phone number must be 10 digits"
+                        value={newUser.phoneNumber}
+                        onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="flex space-x-3 pt-4">
                 <button

@@ -8,6 +8,7 @@ const cors = require("cors");
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://127.0.0.1:5173",
 ];
 
@@ -27,6 +28,7 @@ app.use(cors({
 
 const usersRouter = require("./routes/users");
 const authRouter = require("./routes/auth");
+const ticketsRouter = require("./routes/tickets");
 
 
 app.use(express.json());
@@ -34,6 +36,7 @@ app.use(morgan("dev"));
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter); // you can protect these later with auth middleware
+app.use("/api/tickets", ticketsRouter);
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/mern_hierarchy";
 const PORT = process.env.PORT || 3000;

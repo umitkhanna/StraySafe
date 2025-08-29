@@ -10,6 +10,12 @@ export function AuthProvider({ children }) {
   });
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(() => {
+    return localStorage.getItem("isImpersonating") === "true";
+  });
+  const [impersonatedBy, setImpersonatedBy] = useState(() => {
+    return localStorage.getItem("impersonatedBy");
+  });
 
   const login = async (email, password) => {
     setLoading(true);
@@ -19,6 +25,13 @@ export function AuthProvider({ children }) {
       localStorage.setItem("user", JSON.stringify(data.user));
       setToken(data.token);
       setUser(data.user);
+      
+      // Clear any impersonation state on fresh login
+      localStorage.removeItem("isImpersonating");
+      localStorage.removeItem("impersonatedBy");
+      setIsImpersonating(false);
+      setImpersonatedBy(null);
+      
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e?.response?.data?.error || "Login failed" };
@@ -27,11 +40,59 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const impersonate = async (userId) => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/impersonate", { userId });
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("isImpersonating", "true");
+      localStorage.setItem("impersonatedBy", data.impersonatedBy);
+      
+      setToken(data.token);
+      setUser(data.user);
+      setIsImpersonating(true);
+      setImpersonatedBy(data.impersonatedBy);
+      
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e?.response?.data?.error || "Impersonation failed" };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stopImpersonating = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/stop-impersonating");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.removeItem("isImpersonating");
+      localStorage.removeItem("impersonatedBy");
+      
+      setToken(data.token);
+      setUser(data.user);
+      setIsImpersonating(false);
+      setImpersonatedBy(null);
+      
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e?.response?.data?.error || "Failed to stop impersonating" };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("isImpersonating");
+    localStorage.removeItem("impersonatedBy");
     setToken(null);
     setUser(null);
+    setIsImpersonating(false);
+    setImpersonatedBy(null);
   };
 
   // (Optional) try to refresh "me" on mount if token exists
@@ -51,7 +112,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthCtx.Provider value={{ user, token, login, logout, loading }}>
+    <AuthCtx.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      loading, 
+      impersonate, 
+      stopImpersonating, 
+      isImpersonating, 
+      impersonatedBy 
+    }}>
       {children}
     </AuthCtx.Provider>
   );
