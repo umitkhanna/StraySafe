@@ -83,3 +83,9 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# -------------------------
+# Markdown files (except README.md)
+# -------------------------
+*.md
+!README.md
