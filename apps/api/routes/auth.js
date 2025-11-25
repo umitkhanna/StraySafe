@@ -22,7 +22,7 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     const { email, password } = req.body;
-
+console.log(email, password);
     // include hidden passwordHash for verification
     const user = await User.findOne({ email, isActive: true }).select(
       "+passwordHash"

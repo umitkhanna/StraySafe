@@ -22,7 +22,7 @@ async function run() {
       name: "Admin Root",
       email,
       passwordHash,
-      role: "ADMIN",
+      role: "admin",
       parentId: null,
     });
 
