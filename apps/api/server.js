@@ -10,6 +10,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5173",
+  "http://localhost:8081", // Expo web
+  "http://192.168.29.124:8081", // Expo mobile
 ];
 
 const app = express();
@@ -29,6 +31,8 @@ app.use(cors({
 const usersRouter = require("./routes/users");
 const authRouter = require("./routes/auth");
 const ticketsRouter = require("./routes/tickets");
+const dashboardRouter = require("./routes/dashboard");
+const manageRouter = require("./routes/manage");
 
 
 app.use(express.json());
@@ -37,6 +41,8 @@ app.use(morgan("dev"));
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter); // you can protect these later with auth middleware
 app.use("/api/tickets", ticketsRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/manage", manageRouter);
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/mern_hierarchy";
 const PORT = process.env.PORT || 3000;

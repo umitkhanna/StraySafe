@@ -99,3 +99,5 @@ ML Service → http://localhost/ml
 
 MinIO Console → http://localhost/console
 (login with MINIO_ROOT_USER / MINIO_ROOT_PASSWORD)
+
+Dataset: https://universe.roboflow.com/search?q=class%3Astray+dog
