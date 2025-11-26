@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
+import { getApiUrl } from '@/config/api';
 
 interface User {
   _id: string;
@@ -19,9 +20,20 @@ interface User {
   email: string;
   role: string;
   phone?: string;
-  location?: string;
+  location?: string | { type: string; coordinates: number[] };
   createdAt: string;
 }
+
+// Helper function to safely extract location string
+const getLocationString = (location: string | { type: string; coordinates: number[] } | undefined): string => {
+  if (!location) return 'Unknown location';
+  if (typeof location === 'string') return location;
+  if (typeof location === 'object' && location.coordinates) {
+    // If it's a GeoJSON object, format coordinates or return a default message
+    return `Lat: ${location.coordinates[1]?.toFixed(4)}, Lng: ${location.coordinates[0]?.toFixed(4)}`;
+  }
+  return 'Unknown location';
+};
 
 interface ManageStats {
   totalUsers: number;
@@ -51,7 +63,7 @@ export default function ManageScreen() {
 
   const loadManageData = async () => {
     try {
-      const response = await axios.get('http://192.168.29.124:3000/api/manage/stats');
+      const response = await axios.get(getApiUrl('manage/stats'));
       setStats(response.data);
     } catch (error) {
       console.error('Error loading manage data:', error);
@@ -109,7 +121,7 @@ export default function ManageScreen() {
         </View>
       </View>
       {item.location && (
-        <Text style={styles.userLocation}>📍 {item.location}</Text>
+        <Text style={styles.userLocation}>📍 {getLocationString(item.location)}</Text>
       )}
       <Text style={styles.userDate}>
         Joined: {formatDate(item.createdAt)}
@@ -265,8 +277,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 45,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   headerTitle: {

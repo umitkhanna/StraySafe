@@ -10,6 +10,17 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 
+// Helper function to safely extract location string
+const getLocationString = (location: string | { type: string; coordinates: number[] } | undefined): string => {
+  if (!location) return 'Unknown location';
+  if (typeof location === 'string') return location;
+  if (typeof location === 'object' && location.coordinates) {
+    // If it's a GeoJSON object, format coordinates or return a default message
+    return `Lat: ${location.coordinates[1]?.toFixed(4)}, Lng: ${location.coordinates[0]?.toFixed(4)}`;
+  }
+  return 'Unknown location';
+};
+
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -126,7 +137,7 @@ export default function ProfileScreen() {
           {user?.location && (
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>{user.location}</Text>
+              <Text style={styles.infoValue}>{getLocationString(user.location)}</Text>
             </View>
           )}
         </View>
@@ -200,8 +211,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 45,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   headerTitle: {

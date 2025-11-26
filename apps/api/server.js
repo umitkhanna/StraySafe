@@ -44,7 +44,7 @@ app.use("/api/tickets", ticketsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/manage", manageRouter);
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/mern_hierarchy";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/straysafe";
 const PORT = process.env.PORT || 3000;
 
 mongoose

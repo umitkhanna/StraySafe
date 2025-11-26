@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from 'axios';
+import { getApiUrl } from '@/config/api';
 
 interface Ticket {
   _id: string;
@@ -20,7 +21,7 @@ interface Ticket {
   status: string;
   priority: string;
   category: string;
-  location: string;
+  location: string | { type: string; coordinates: number[] };
   reportedBy: {
     name: string;
     email: string;
@@ -33,6 +34,17 @@ interface Ticket {
   updatedAt: string;
 }
 
+// Helper function to safely extract location string
+const getLocationString = (location: string | { type: string; coordinates: number[] } | undefined): string => {
+  if (!location) return 'Unknown location';
+  if (typeof location === 'string') return location;
+  if (typeof location === 'object' && location.coordinates) {
+    // If it's a GeoJSON object, format coordinates or return a default message
+    return `Lat: ${location.coordinates[1]?.toFixed(4)}, Lng: ${location.coordinates[0]?.toFixed(4)}`;
+  }
+  return 'Unknown location';
+};
+
 export default function TicketsScreen() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -43,11 +55,16 @@ export default function TicketsScreen() {
 
   const loadTickets = async () => {
     try {
-      const response = await axios.get('http://192.168.29.124:3000/api/tickets');
-      setTickets(response.data);
+      const response = await axios.get(getApiUrl('tickets'));
+      // Ensure we always have an array
+      const ticketsData = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.tickets || response.data?.data || []);
+      setTickets(ticketsData);
     } catch (error) {
       console.error('Error loading tickets:', error);
       Alert.alert('Error', 'Failed to load tickets');
+      setTickets([]); // Set to empty array on error
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,32 +80,33 @@ export default function TicketsScreen() {
     loadTickets();
   };
 
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         ticket.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         ticket.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTickets = Array.isArray(tickets) ? tickets.filter(ticket => {
+    const locationStr = getLocationString(ticket.location).toLowerCase();
+    const matchesSearch = ticket.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         ticket.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         locationStr.includes(searchQuery.toLowerCase());
     
     const matchesStatus = selectedStatus === 'all' || ticket.status === selectedStatus;
     
     return matchesSearch && matchesStatus;
-  });
+  }) : [];
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'high': return '#ff4757';
-      case 'medium': return '#ffa502';
-      case 'low': return '#2ed573';
-      default: return '#666';
+      case 'high': return '#ff8a95'; // Softer red
+      case 'medium': return '#ffc085'; // Softer orange
+      case 'low': return '#8dd9a3'; // Softer green
+      default: return '#999';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'open': return '#3742fa';
-      case 'in_progress': return '#ffa502';
-      case 'resolved': return '#2ed573';
-      case 'closed': return '#747d8c';
-      default: return '#666';
+      case 'open': return '#8b9aff'; // Softer blue
+      case 'in_progress': return '#ffc085'; // Softer orange
+      case 'resolved': return '#8dd9a3'; // Softer green
+      case 'closed': return '#a8a8a8'; // Softer gray
+      default: return '#999';
     }
   };
 
@@ -121,7 +139,7 @@ export default function TicketsScreen() {
       </Text>
       
       <View style={styles.ticketMeta}>
-        <Text style={styles.ticketLocation}>📍 {item.location}</Text>
+        <Text style={styles.ticketLocation}>📍 {getLocationString(item.location)}</Text>
         <Text style={styles.ticketCategory}>🏷️ {item.category}</Text>
       </View>
       
@@ -245,7 +263,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
+    paddingTop: 45,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

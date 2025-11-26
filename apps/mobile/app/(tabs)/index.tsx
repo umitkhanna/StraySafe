@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
+import { getApiUrl } from '@/config/api';
 
 interface DashboardStats {
   totalTickets: number;
@@ -24,9 +25,20 @@ interface DashboardStats {
     status: string;
     priority: string;
     createdAt: string;
-    location: string;
+    location: string | { type: string; coordinates: number[] };
   }>;
 }
+
+// Helper function to safely extract location string
+const getLocationString = (location: string | { type: string; coordinates: number[] } | undefined): string => {
+  if (!location) return 'Unknown location';
+  if (typeof location === 'string') return location;
+  if (typeof location === 'object' && location.coordinates) {
+    // If it's a GeoJSON object, format coordinates or return a default message
+    return `Lat: ${location.coordinates[1]?.toFixed(4)}, Lng: ${location.coordinates[0]?.toFixed(4)}`;
+  }
+  return 'Unknown location';
+};
 
 export default function DashboardScreen() {
   const { user, logout } = useAuth();
@@ -37,7 +49,7 @@ export default function DashboardScreen() {
 
   const loadDashboardData = async () => {
     try {
-      const response = await axios.get('http://192.168.29.124:3000/api/dashboard/stats');
+      const response = await axios.get(getApiUrl('dashboard/stats'));
       setStats(response.data);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -91,20 +103,20 @@ export default function DashboardScreen() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'high': return '#ff4757';
-      case 'medium': return '#ffa502';
-      case 'low': return '#2ed573';
-      default: return '#666';
+      case 'high': return '#ff8a95'; // Softer red
+      case 'medium': return '#ffc085'; // Softer orange
+      case 'low': return '#8dd9a3'; // Softer green
+      default: return '#999';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'open': return '#3742fa';
-      case 'in_progress': return '#ffa502';
-      case 'resolved': return '#2ed573';
-      case 'closed': return '#747d8c';
-      default: return '#666';
+      case 'open': return '#8b9aff'; // Softer blue
+      case 'in_progress': return '#ffc085'; // Softer orange
+      case 'resolved': return '#8dd9a3'; // Softer green
+      case 'closed': return '#a8a8a8'; // Softer gray
+      default: return '#999';
     }
   };
 
@@ -168,27 +180,33 @@ export default function DashboardScreen() {
         <View style={styles.actionGrid}>
           <TouchableOpacity 
             style={styles.actionCard}
+            onPress={() => router.push('/(tabs)/report')}
+            activeOpacity={0.7}
           >
             <Text style={styles.actionIcon}>📝</Text>
             <Text style={styles.actionTitle}>Report Incident</Text>
-            <Text style={styles.actionDesc}>Use the Report tab</Text>
+            <Text style={styles.actionDesc}>Submit a new report</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.actionCard}
+            onPress={() => router.push('/(tabs)/tickets')}
+            activeOpacity={0.7}
           >
             <Text style={styles.actionIcon}>📋</Text>
             <Text style={styles.actionTitle}>View Tickets</Text>
-            <Text style={styles.actionDesc}>Use the Tickets tab</Text>
+            <Text style={styles.actionDesc}>See all tickets</Text>
           </TouchableOpacity>
           
           {(user?.role === 'groundstaff' || user?.role === 'admin') && (
             <TouchableOpacity 
               style={styles.actionCard}
+              onPress={() => router.push('/(tabs)/manage')}
+              activeOpacity={0.7}
             >
               <Text style={styles.actionIcon}>⚙️</Text>
               <Text style={styles.actionTitle}>Manage</Text>
-              <Text style={styles.actionDesc}>Use the Manage tab</Text>
+              <Text style={styles.actionDesc}>Manage system</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -216,7 +234,7 @@ export default function DashboardScreen() {
                   </View>
                 </View>
               </View>
-              <Text style={styles.ticketLocation}>📍 {ticket.location}</Text>
+              <Text style={styles.ticketLocation}>📍 {getLocationString(ticket.location)}</Text>
               <Text style={styles.ticketDate}>
                 {new Date(ticket.createdAt).toLocaleDateString()}
               </Text>
@@ -250,8 +268,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 45,
+    paddingBottom: 20,
     paddingHorizontal: 20,
   },
   headerContent: {
@@ -288,142 +306,155 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     padding: 20,
-    marginTop: -20,
+    paddingTop: 24,
+    marginTop: 0,
   },
   statsRow: {
     flexDirection: 'row',
-    marginBottom: 15,
-    gap: 15,
+    marginBottom: 12,
+    gap: 12,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 18,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   primaryCard: {
-    backgroundColor: '#3742fa',
+    backgroundColor: '#8b9aff', // Softer blue
   },
   secondaryCard: {
-    backgroundColor: '#5352ed',
+    backgroundColor: '#a5a8ff', // Softer indigo
   },
   successCard: {
-    backgroundColor: '#2ed573',
+    backgroundColor: '#8dd9a3', // Softer green
   },
   warningCard: {
-    backgroundColor: '#ffa502',
+    backgroundColor: '#ffc085', // Softer orange
   },
   statNumber: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#fff',
-    opacity: 0.9,
+    opacity: 0.95,
+    fontWeight: '500',
   },
   actionsContainer: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 8,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: 16,
+    letterSpacing: 0.3,
   },
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 15,
+    gap: 12,
   },
   actionCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 18,
     alignItems: 'center',
     width: '47%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   actionIcon: {
-    fontSize: 32,
-    marginBottom: 10,
+    fontSize: 28,
+    marginBottom: 8,
   },
   actionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#333',
-    marginBottom: 5,
+    marginBottom: 4,
     textAlign: 'center',
   },
   actionDesc: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#888',
     textAlign: 'center',
+    lineHeight: 16,
   },
   recentContainer: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 8,
+    paddingBottom: 30,
   },
   ticketCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   ticketHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   ticketTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#333',
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
+    lineHeight: 20,
   },
   ticketBadges: {
     flexDirection: 'column',
-    gap: 5,
+    gap: 6,
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   ticketLocation: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 5,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   ticketDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
+    fontWeight: '500',
   },
   emptyState: {
     backgroundColor: '#fff',

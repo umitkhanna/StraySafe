@@ -24,9 +24,20 @@ interface DashboardStats {
     status: string;
     priority: string;
     createdAt: string;
-    location: string;
+    location: string | { type: string; coordinates: number[] };
   }>;
 }
+
+// Helper function to safely extract location string
+const getLocationString = (location: string | { type: string; coordinates: number[] } | undefined): string => {
+  if (!location) return 'Unknown location';
+  if (typeof location === 'string') return location;
+  if (typeof location === 'object' && location.coordinates) {
+    // If it's a GeoJSON object, format coordinates or return a default message
+    return `Lat: ${location.coordinates[1]?.toFixed(4)}, Lng: ${location.coordinates[0]?.toFixed(4)}`;
+  }
+  return 'Unknown location';
+};
 
 export default function DashboardScreen() {
   const { user, logout } = useAuth();
@@ -220,7 +231,7 @@ export default function DashboardScreen() {
                   </View>
                 </View>
               </View>
-              <Text style={styles.ticketLocation}>📍 {ticket.location}</Text>
+              <Text style={styles.ticketLocation}>📍 {getLocationString(ticket.location)}</Text>
               <Text style={styles.ticketDate}>
                 {new Date(ticket.createdAt).toLocaleDateString()}
               </Text>
@@ -254,8 +265,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 45,
+    paddingBottom: 20,
     paddingHorizontal: 20,
   },
   headerContent: {

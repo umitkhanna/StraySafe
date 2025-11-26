@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,15 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  // Navigate when authentication state changes
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,11 +39,10 @@ export default function LoginScreen() {
     const success = await login(email, password);
     setLoading(false);
 
-    if (success) {
-      router.replace('/(tabs)');
-    } else {
+    if (!success) {
       Alert.alert('Error', 'Invalid credentials. Please try again.');
     }
+    // Navigation will be handled by useEffect when isAuthenticated becomes true
   };
 
   return (

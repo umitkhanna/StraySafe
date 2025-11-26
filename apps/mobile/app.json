@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.straysafe.mobile"
+      "bundleIdentifier": "com.straysafe.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need access to your camera to take photos for incident reports.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to upload images for incident reports."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,12 @@
         "backgroundColor": "#ff6b35"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.straysafe.mobile"
+      "package": "com.straysafe.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",

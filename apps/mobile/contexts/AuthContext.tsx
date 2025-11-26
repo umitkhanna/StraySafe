@@ -1,8 +1,34 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
-const API_BASE_URL = 'http://192.168.29.124:3000';
+// Storage helper that works on both native and web
+const Storage = {
+  async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return await SecureStore.getItemAsync(key);
+  },
+
+  async setItem(key: string, value: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+
+  async removeItem(key: string): Promise<void> {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  },
+};
 
 export interface User {
   _id: string;
@@ -43,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Setup axios interceptor for auth token
   useEffect(() => {
     const setupAxiosInterceptor = async () => {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await Storage.getItem('auth_token');
       if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
@@ -58,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await Storage.getItem('auth_token');
       if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
@@ -66,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       // Token invalid or expired, clear it
-      await SecureStore.deleteItemAsync('auth_token');
+      await Storage.removeItem('auth_token');
       delete axios.defaults.headers.common['Authorization'];
     } finally {
       setLoading(false);
@@ -84,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { token, user: userData } = response.data;
 
       // Store token securely
-      await SecureStore.setItemAsync('auth_token', token);
+      await Storage.setItem('auth_token', token);
       
       // Set axios header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -102,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setLoading(true);
-      await SecureStore.deleteItemAsync('auth_token');
+      await Storage.removeItem('auth_token');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
     } catch (error) {

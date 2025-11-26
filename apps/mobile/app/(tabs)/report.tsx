@@ -10,15 +10,19 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
+import { getApiUrl } from '@/config/api';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ReportScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -44,6 +48,81 @@ export default function ReportScreen() {
     { value: 'high', label: 'High', color: '#ff4757' },
   ];
 
+  const requestImagePermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'We need access to your photos to upload images for the incident report.'
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    const hasPermission = await requestImagePermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => asset.uri);
+        setImages(prev => [...prev, ...newImages].slice(0, 5)); // Limit to 5 images
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'We need access to your camera to take photos for the incident report.'
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setImages(prev => [...prev, result.assets[0].uri].slice(0, 5)); // Limit to 5 images
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Add Image',
+      'Choose an option',
+      [
+        { text: 'Camera', onPress: takePhoto },
+        { text: 'Photo Library', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.description.trim() || !formData.location.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -57,9 +136,31 @@ export default function ReportScreen() {
 
     setLoading(true);
     try {
-      const response = await axios.post('http://192.168.29.124:3000/api/tickets', {
-        ...formData,
-        reportedBy: user?._id,
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('category', formData.category);
+      formDataToSend.append('location', formData.location);
+      formDataToSend.append('priority', formData.priority);
+      formDataToSend.append('reportedBy', user?._id || '');
+
+      // Append images
+      images.forEach((uri, index) => {
+        const filename = uri.split('/').pop() || `image_${index}.jpg`;
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        
+        formDataToSend.append('images', {
+          uri,
+          name: filename,
+          type,
+        } as any);
+      });
+
+      const response = await axios.post(getApiUrl('tickets'), formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       Alert.alert(
@@ -76,6 +177,7 @@ export default function ReportScreen() {
                 location: '',
                 priority: 'medium',
               });
+              setImages([]);
             },
           },
           {
@@ -198,6 +300,46 @@ export default function ReportScreen() {
             />
           </View>
 
+          {/* Images */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Images (Optional)</Text>
+            <Text style={styles.imageHint}>Add up to 5 photos to help describe the incident</Text>
+            
+            {/* Image Preview Grid */}
+            {images.length > 0 && (
+              <View style={styles.imageGrid}>
+                {images.map((uri, index) => (
+                  <View key={index} style={styles.imagePreviewContainer}>
+                    <Image source={{ uri }} style={styles.imagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(index)}
+                    >
+                      <Text style={styles.removeImageText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Add Image Buttons */}
+            {images.length < 5 && (
+              <View style={styles.imageButtonContainer}>
+                <TouchableOpacity
+                  style={styles.imageButton}
+                  onPress={showImageOptions}
+                >
+                  <Text style={styles.imageButtonIcon}>📷</Text>
+                  <Text style={styles.imageButtonText}>Add Photo</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {images.length >= 5 && (
+              <Text style={styles.imageLimitText}>Maximum 5 images reached</Text>
+            )}
+          </View>
+
           {/* Safety Tips */}
           <View style={styles.tipsContainer}>
             <Text style={styles.tipsTitle}>🛡️ Safety Tips</Text>
@@ -232,8 +374,8 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#ff6b35',
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 45,
+    paddingBottom: 16,
     paddingHorizontal: 20,
   },
   headerTitle: {
@@ -354,5 +496,76 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  imageHint: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    lineHeight: 20,
+  },
+  imageButtonContainer: {
+    marginTop: 8,
+  },
+  imageButton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#ff6b35',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  imageButtonIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  imageButtonText: {
+    color: '#ff6b35',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  imageLimitText: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
 });

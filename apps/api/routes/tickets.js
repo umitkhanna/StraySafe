@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const { body, validationResult, query } = require("express-validator");
 const Ticket = require("../models/Ticket");
 const { auth, requireRole } = require("../middleware/auth");
@@ -21,7 +22,8 @@ router.get(
     query("reportedBy").optional().isMongoId()
   ],
   async (req, res) => {
-    try {
+    console.log('Fetching tickets with filters');
+  //  try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
       const skip = (page - 1) * limit;
@@ -31,10 +33,12 @@ router.get(
       
       // Role-based filtering
       const userRole = req.user.role.toLowerCase();
+      console.log('userRole:',userRole);
+      console.log('userId:',req.user.id);
       if (userRole === 'operators' || userRole === 'groundstaff') {
         // Operators and ground staff can only see tickets assigned to them or unassigned tickets in their area
         filter.$or = [
-          { assignedTo: req.user.id },
+          { assignedTo: new mongoose.Types.ObjectId(req.user.id) },
           { assignedTo: null }
         ];
       } else if (userRole === 'ngoadmin' || userRole === 'municipalityadmin') {
@@ -42,6 +46,7 @@ router.get(
         // This would need additional logic to get team members, for now just their own
         filter.assignedTo = req.user.id;
       }
+      
       // Admins can see all tickets (no additional filter)
 
       // Apply query filters
@@ -51,14 +56,19 @@ router.get(
       if (req.query.assignedTo) filter.assignedTo = req.query.assignedTo;
       if (req.query.reportedBy) filter.reportedBy = req.query.reportedBy;
 
+      console.log('filter:',filter);
       const tickets = await Ticket.find(filter)
-        .populate('reportedBy', 'name email role')
-        .populate('assignedTo', 'name email role')
-        .populate('resolvedBy', 'name email')
+        // .populate('reportedBy', 'name email role')
+        // .populate('assignedTo', 'name email role')
+        // .populate('resolvedBy', 'name email')
         .sort({ createdAt: -1 })
-        .skip(skip)
+        //.skip(skip)
         .limit(limit);
+console.log('tickets:',tickets);
+const all = await Ticket.find();
+console.log(all);
 
+console.log("CONNECTED TO DB:", mongoose.connection.db.databaseName);
       const total = await Ticket.countDocuments(filter);
 
       res.json({
@@ -66,12 +76,13 @@ router.get(
         pagination: {
           current: page,
           pages: Math.ceil(total / limit),
-          total
+          total,
+          test:"yes"
         }
       });
-    } catch (error) {
-      res.status(500).json({ error: error.message || "Failed to fetch tickets" });
-    }
+    // } catch (error) {
+    //   res.status(500).json({ error: error.message || "Failed to fetch tickets" });
+    // }
   }
 );
 
@@ -83,6 +94,7 @@ router.get(
   "/:id",
   [auth(true)],
   async (req, res) => {
+    
     try {
       const ticket = await Ticket.findById(req.params.id)
         .populate('reportedBy', 'name email role phoneNumber')
@@ -126,6 +138,7 @@ router.post(
     body("medicalAttentionRequired").optional().isBoolean()
   ],
   async (req, res) => {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
